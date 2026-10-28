@@ -83,3 +83,10 @@ def create_user(client):
         return {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
     return _create
+
+
+@pytest.fixture(autouse=True)
+def clean_redis():
+    from app.core.cache import redis_client
+
+    redis_client.flushdb()
