@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
-from app.api.routes import auth, projects, tasks
+from app.api.routes import auth, notifications, projects, tasks
 from app.services.task_service import AssigneeNotFoundError
 
 
@@ -10,6 +10,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(projects.router)
     app.include_router(tasks.router)
+    app.include_router(notifications.router)
 
     @app.exception_handler(AssigneeNotFoundError)
     def assignee_not_found(request: Request, exc: AssigneeNotFoundError) -> JSONResponse:

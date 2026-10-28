@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.core import cache
 from app.models import Project, Task, User
-from app.schemas.task import Page, TaskCreate, TaskFilter, TaskOut, TaskUpdate
+from app.schemas.common import Page
+from app.schemas.task import TaskCreate, TaskFilter, TaskOut, TaskUpdate
 from app.worker.jobs import notify_reassigned
 
 logger = logging.getLogger(__name__)

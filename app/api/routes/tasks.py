@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, get_owned_project, get_owned_task
 from app.models import Project, Task, User
-from app.schemas.task import Page, TaskCreate, TaskFilter, TaskOut, TaskUpdate
+from app.schemas.common import Page
+from app.schemas.task import TaskCreate, TaskFilter, TaskOut, TaskUpdate
 from app.services import task_service
 
 router = APIRouter(tags=["tasks"])
