@@ -33,3 +33,20 @@ class TaskOut(BaseModel):
     due_date: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class TaskFilter(BaseModel):
+    status: TaskStatus | None = None
+    assignee_id: int | None = None
+    project_id: int | None = None
+    due_after: datetime | None = None
+    due_before: datetime | None = None
+    page: int = Field(default=1, ge=1)
+    size: int = Field(default=20, ge=1, le=100)
+
+
+class Page[T](BaseModel):
+    items: list[T]
+    total: int
+    page: int
+    size: int

@@ -1,8 +1,8 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Project, Task, User
-from app.schemas.task import TaskCreate, TaskUpdate
+from app.schemas.task import TaskCreate, TaskFilter, TaskUpdate
 
 
 class AssigneeNotFoundError(Exception):
@@ -44,3 +44,24 @@ def update_task(db: Session, task: Task, data: TaskUpdate) -> Task:
 def delete_task(db: Session, task: Task) -> None:
     db.delete(task)
     db.commit()
+
+
+def list_tasks(db: Session, owner_id: int, filters: TaskFilter) -> tuple[list[Task], int]:
+    conditions = [Project.owner_id == owner_id]
+    if filters.status is not None:
+        conditions.append(Task.status == filters.status)
+    if filters.assignee_id is not None:
+        conditions.append(Task.assignee_id == filters.assignee_id)
+    if filters.project_id is not None:
+        conditions.append(Task.project_id == filters.project_id)
+    if filters.due_after is not None:
+        conditions.append(Task.due_date >= filters.due_after)
+    if filters.due_before is not None:
+        conditions.append(Task.due_date <= filters.due_before)
+
+    base = select(Task).join(Project, Task.project_id == Project.id).where(*conditions)
+    total = db.scalar(select(func.count()).select_from(base.subquery()))
+    items = db.scalars(
+        base.order_by(Task.id).offset((filters.page - 1) * filters.size).limit(filters.size)
+    )
+    return list(items), total
