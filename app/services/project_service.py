@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import cache
 from app.models import Project
 from app.schemas.project import ProjectCreate, ProjectUpdate
 
@@ -32,3 +33,5 @@ def update_project(db: Session, project: Project, data: ProjectUpdate) -> Projec
 def delete_project(db: Session, project: Project) -> None:
     db.delete(project)
     db.commit()
+    # Deleting a project cascades to its tasks, so cached task lists are stale too.
+    cache.bump_tasks_version(project.owner_id)

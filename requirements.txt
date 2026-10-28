@@ -8,3 +8,4 @@ bcrypt==4.2.1
 PyJWT==2.10.1
 pydantic[email]==2.10.4
 python-multipart==0.0.20
+redis==5.2.1

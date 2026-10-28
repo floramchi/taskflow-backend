@@ -1,8 +1,9 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core import cache
 from app.models import Project, Task, User
-from app.schemas.task import TaskCreate, TaskFilter, TaskUpdate
+from app.schemas.task import Page, TaskCreate, TaskFilter, TaskOut, TaskUpdate
 
 
 class AssigneeNotFoundError(Exception):
@@ -28,22 +29,25 @@ def create_task(db: Session, project: Project, data: TaskCreate) -> Task:
     task = Task(project_id=project.id, **data.model_dump())
     db.add(task)
     db.commit()
+    cache.bump_tasks_version(project.owner_id)
     return task
 
 
-def update_task(db: Session, task: Task, data: TaskUpdate) -> Task:
+def update_task(db: Session, task: Task, data: TaskUpdate, owner_id: int) -> Task:
     changes = data.model_dump(exclude_unset=True)
     if "assignee_id" in changes:
         _check_assignee_exists(db, changes["assignee_id"])
     for field, value in changes.items():
         setattr(task, field, value)
     db.commit()
+    cache.bump_tasks_version(owner_id)
     return task
 
 
-def delete_task(db: Session, task: Task) -> None:
+def delete_task(db: Session, task: Task, owner_id: int) -> None:
     db.delete(task)
     db.commit()
+    cache.bump_tasks_version(owner_id)
 
 
 def list_tasks(db: Session, owner_id: int, filters: TaskFilter) -> tuple[list[Task], int]:
@@ -65,3 +69,22 @@ def list_tasks(db: Session, owner_id: int, filters: TaskFilter) -> tuple[list[Ta
         base.order_by(Task.id).offset((filters.page - 1) * filters.size).limit(filters.size)
     )
     return list(items), total
+
+
+def list_tasks_json(db: Session, owner_id: int, filters: TaskFilter) -> tuple[str, bool]:
+    """Return the serialized page and whether it came from the cache."""
+    key = cache.tasks_key(owner_id, filters.model_dump(mode="json"))
+    cached = cache.get_cached(key)
+    if cached is not None:
+        return cached, True
+
+    items, total = list_tasks(db, owner_id, filters)
+    page = Page[TaskOut](
+        items=[TaskOut.model_validate(t) for t in items],
+        total=total,
+        page=filters.page,
+        size=filters.size,
+    )
+    body = page.model_dump_json()
+    cache.set_cached(key, body)
+    return body, False

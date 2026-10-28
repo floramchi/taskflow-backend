@@ -29,14 +29,21 @@ def get_task(task: Task = Depends(get_owned_task)) -> Task:
 
 @router.patch("/tasks/{task_id}", response_model=TaskOut)
 def update_task(
-    payload: TaskUpdate, task: Task = Depends(get_owned_task), db: Session = Depends(get_db)
+    payload: TaskUpdate,
+    task: Task = Depends(get_owned_task),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> Task:
-    return task_service.update_task(db, task, payload)
+    return task_service.update_task(db, task, payload, user.id)
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(task: Task = Depends(get_owned_task), db: Session = Depends(get_db)) -> Response:
-    task_service.delete_task(db, task)
+def delete_task(
+    task: Task = Depends(get_owned_task),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    task_service.delete_task(db, task, user.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -45,6 +52,9 @@ def list_tasks(
     filters: Annotated[TaskFilter, Query()],
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Page[TaskOut]:
-    items, total = task_service.list_tasks(db, user.id, filters)
-    return Page(items=items, total=total, page=filters.page, size=filters.size)
+) -> Response:
+    body, hit = task_service.list_tasks_json(db, user.id, filters)
+    # X-Cache lets tests (and curl) see whether Redis served the response.
+    return Response(
+        content=body, media_type="application/json", headers={"X-Cache": "HIT" if hit else "MISS"}
+    )
