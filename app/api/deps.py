@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
 from app.core.security import decode_access_token
-from app.models import User
+from app.models import Project, User
+from app.services import project_service
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -26,3 +27,13 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
             headers={"WWW-Authenticate": "Bearer"},
         )
     return user
+
+
+def get_owned_project(
+    project_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> Project:
+    # 404 rather than 403 so other users' project ids can't be probed.
+    project = project_service.get_owned_project(db, project_id, user.id)
+    if project is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+    return project
