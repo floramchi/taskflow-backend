@@ -1,4 +1,5 @@
 import os
+from contextlib import nullcontext
 from pathlib import Path
 
 TEST_DATABASE_URL = os.environ.get(
@@ -21,6 +22,7 @@ from alembic import command
 from alembic.config import Config
 from app.api.deps import get_db
 from app.main import app
+from app.worker import jobs
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -68,8 +70,11 @@ def db_session(engine):
 
 
 @pytest.fixture
-def client(db_session):
+def client(db_session, monkeypatch):
     app.dependency_overrides[get_db] = lambda: db_session
+    # Jobs open their own session; point them at the test transaction so they can
+    # see uncommitted test data and get rolled back with it.
+    monkeypatch.setattr(jobs, "SessionLocal", lambda: nullcontext(db_session))
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
