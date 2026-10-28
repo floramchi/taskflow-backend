@@ -19,6 +19,12 @@ services:
     environment: *app-env
     depends_on: *app-deps
 
+  beat:
+    build: .
+    command: celery -A app.worker.celery_app beat --loglevel=info
+    environment: *app-env
+    depends_on: *app-deps
+
   db:
     image: postgres:16-alpine
     environment:

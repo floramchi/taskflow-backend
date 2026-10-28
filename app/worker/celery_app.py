@@ -9,3 +9,10 @@ celery_app.conf.update(
     imports=["app.worker.jobs"],
     timezone="UTC",
 )
+
+celery_app.conf.beat_schedule = {
+    "scan-overdue-tasks": {
+        "task": "app.worker.jobs.scan_overdue_tasks",
+        "schedule": float(settings.overdue_scan_seconds),
+    },
+}
