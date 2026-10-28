@@ -1,9 +1,15 @@
+import logging
+
+from kombu.exceptions import OperationalError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core import cache
 from app.models import Project, Task, User
 from app.schemas.task import Page, TaskCreate, TaskFilter, TaskOut, TaskUpdate
+from app.worker.jobs import notify_reassigned
+
+logger = logging.getLogger(__name__)
 
 
 class AssigneeNotFoundError(Exception):
@@ -37,11 +43,24 @@ def update_task(db: Session, task: Task, data: TaskUpdate, owner_id: int) -> Tas
     changes = data.model_dump(exclude_unset=True)
     if "assignee_id" in changes:
         _check_assignee_exists(db, changes["assignee_id"])
+    new_assignee_id = changes.get("assignee_id")
+    reassigned = new_assignee_id is not None and new_assignee_id != task.assignee_id
     for field, value in changes.items():
         setattr(task, field, value)
     db.commit()
     cache.bump_tasks_version(owner_id)
+    if reassigned:
+        _enqueue_reassignment_notification(task.id, new_assignee_id)
     return task
+
+
+def _enqueue_reassignment_notification(task_id: int, assignee_id: int) -> None:
+    # Enqueued after the commit so the worker always sees the committed row.
+    # If the broker is down the update still stands; the notification is lost.
+    try:
+        notify_reassigned.delay(task_id, assignee_id)
+    except OperationalError:
+        logger.exception("Could not enqueue reassignment notification for task %s", task_id)
 
 
 def delete_task(db: Session, task: Task, owner_id: int) -> None:
