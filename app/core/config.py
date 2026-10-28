@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 60
     cache_ttl_seconds: int = 60
     overdue_scan_seconds: int = 60
+    celery_task_always_eager: bool = False
 
 
 settings = Settings()

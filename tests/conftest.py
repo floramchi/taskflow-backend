@@ -8,6 +8,8 @@ TEST_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/1")
 # Must be set before the app is imported so settings pick up the test services.
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["REDIS_URL"] = TEST_REDIS_URL
+# Run background jobs inline so tests can assert their effects directly.
+os.environ["CELERY_TASK_ALWAYS_EAGER"] = "true"
 
 import pytest
 from fastapi.testclient import TestClient

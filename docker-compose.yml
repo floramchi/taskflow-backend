@@ -7,11 +7,17 @@ services:
       DATABASE_URL: postgresql+psycopg://taskflow:taskflow@db:5432/taskflow
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: ${JWT_SECRET:-change-me}
-    depends_on:
+    depends_on: &app-deps
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  worker:
+    build: .
+    command: celery -A app.worker.celery_app worker --loglevel=info
+    environment: *app-env
+    depends_on: *app-deps
 
   db:
     image: postgres:16-alpine
