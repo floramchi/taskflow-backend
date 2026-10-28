@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
 from app.core.security import decode_access_token
-from app.models import Project, User
-from app.services import project_service
+from app.models import Project, Task, User
+from app.services import project_service, task_service
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -37,3 +37,12 @@ def get_owned_project(
     if project is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
     return project
+
+
+def get_owned_task(
+    task_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> Task:
+    task = task_service.get_owned_task(db, task_id, user.id)
+    if task is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Task not found")
+    return task
